@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "target": "es2015",                // Target modern JavaScript (ES6)
+    "module": "commonjs",               // Use CommonJS for Node.js compatibility
+    "lib": ["es2015", "es2016", "esnext"], // Include modern JavaScript libraries
+    "strict": true,                     // Enable strict type-checking options
+    "esModuleInterop": true,            // Ensure compatibility with CommonJS modules
+    "skipLibCheck": true,               // Skip type checking of declaration files (optional)
+    "forceConsistentCasingInFileNames": true,
+    "outDir": "./dist"                  // Output directory for compiled files
+  },
+  "include": ["./**/*.ts"],             // Include all .ts files in the project
+  "exclude": ["node_modules"]           // Exclude node_modules from compilation
+}
