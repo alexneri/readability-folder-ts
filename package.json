@@ -1,5 +1,37 @@
 {
+  "name": "@alexneri/readability-ts",
+  "description": "A CLI app that runs the Flesch-kincaid readability score recursively on all *.adoc files in the current directory.",
+  "version": "0.7.0",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alexneri/readability-folder-ts.git"
+  },
+  "keywords": [
+    "readability",
+    "flesch-kincaid",
+    "readability-score",
+    "readability-index",
+    "readability-test",
+    "readability-analysis",
+    "readability-assessment",
+    "readability-formula",
+    "readability-measure",
+    "readability-level"
+  ],
+  "author": "Alexander Neri",
+  "license": "GPL-3.0-or-later",
+  "bugs": {
+    "url": "https://github.com/alexneri/readability-folder-ts/issues"
+  },
+  "homepage": "https://github.com/alexneri/readability-folder-ts",
   "devDependencies": {
     "@types/node": "^22.9.1"
+  },
+  "main": "readability.js",
+  "dependencies": {
+    "undici-types": "^6.19.8"
   }
 }
