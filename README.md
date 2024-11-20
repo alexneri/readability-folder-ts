@@ -32,15 +32,23 @@ This application does the following:
 
 ## Installation
 
-1. Clone the repository: git clone git@github.com:alexneri/readability-folder-ts.git 
+There are two ways for you to install this tool:
+
+### Install via npm (Recommended)
+
+1. Run `npm install @alexneri/readability-ts -g`.
+
+### via this CLI
+
+1. Clone the repository: `git clone git@github.com:alexneri/readability-folder-ts.git` 
 2. Open terminal.
 3. Navigate to the folder. 
 4. Run `npm install` to install the dependencies.
-5. Run `tsc readability.ts`.
+5. Run `npm link`
 
 ## Usage
 
-Enter command `node readability.js node readability.js /path/to/folder`
+Enter command `readability-ts /path/to/folder` and replace the path with the folder you want to scan (relative to the folder you run this command).
 
 ## License
 ```GNU License
@@ -67,13 +75,13 @@ A donation is not required, but it is appreciated. If you find this program usef
 
 ## Roadmap
 
-* Make this installable on npm
+* ~~Make this installable on npm~~ **DONE**
 * Add more tests
 * Add more documentation
 * Add more supported file formats
 * Add more supported languages
 * Add more supported readability tests
-* 
+
 For feature requests, please open an [issue](https://github.com/alexneri/readability-folder-ts/issues) on the repository.
 
 ## For further reading
