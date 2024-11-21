@@ -48,7 +48,7 @@ There are two ways for you to install this tool:
 
 ## Usage
 
-Enter command `readability-ts /path/to/folder` and replace the path with the folder you want to scan (relative to the folder you run this command).
+Enter command `readability-ts /path/to/folder` and replace the path with the folder you want to scan (relative to the folder you run this command). If the `path` is empty, the tool assumes the current folder and will scan the entire folder where you are in the CLI.
 
 ## License
 ```GNU License
