@@ -49,14 +49,23 @@ function getRating(score: number): string {
     return 'Professional - Extremely difficult to read. Best understood by university graduates.';
 }
 
-// Remove AsciiDoc tags and code block formatting
-function cleanAdocContent(content: string): string {
-    return content.replace(/(```[\s\S]*?```|==+|--+|\.\.\.\.|\[.*?\])/g, '').trim();
+// Remove AsciiDoc/Markdown tags and code block formatting
+function cleanContent(content: string): { cleanedText: string; hasCodeBlock: boolean } {
+    const hasCodeBlock = /```[\s\S]*?```|----/.test(content); // Detect code blocks
+    const cleanedText = content.replace(/(```[\s\S]*?```|==+|--+|\.\.\.\.|\[.*?\])/g, '').trim();
+    return { cleanedText, hasCodeBlock };
 }
 
-// Recursively scan directory for .adoc files
+// Count acronyms in the text
+function countAcronyms(text: string): number {
+    const acronymRegex = /\b[A-Z]{2,}\b/g; // Matches words with all uppercase letters of length >=2
+    const matches = text.match(acronymRegex);
+    return matches ? matches.length : 0;
+}
+
+// Recursively scan directory for .adoc and .md files
 async function scanDirectory(dirPath: string): Promise<string[]> {
-    let adocFiles: string[] = [];
+    let filesToProcess: string[] = [];
 
     const files = await fs.readdir(dirPath, { withFileTypes: true });
 
@@ -64,33 +73,81 @@ async function scanDirectory(dirPath: string): Promise<string[]> {
         const fullPath = path.join(dirPath, file.name);
 
         if (file.isDirectory()) {
-            adocFiles = adocFiles.concat(await scanDirectory(fullPath));
-        } else if (file.isFile() && file.name.endsWith('.adoc')) {
-            adocFiles.push(fullPath);
+            filesToProcess = filesToProcess.concat(await scanDirectory(fullPath));
+        } else if (
+            file.isFile() &&
+            (file.name.endsWith('.adoc') || file.name.endsWith('.md'))
+        ) {
+            filesToProcess.push(fullPath);
         }
     }
 
-    return adocFiles;
+    return filesToProcess;
 }
 
-// Process each .adoc file
-async function processAdocFile(filePath: string): Promise<{ filePath: string; score: number }> {
+// Process each file (.adoc or .md)
+async function processFile(filePath: string): Promise<{
+    filePath: string;
+    score: number;
+    lineCount: number;
+    sentenceCount: number;
+    wordCount: number;
+    avgWordLength: number;
+    avgSyllables: number;
+    hasCodeBlock: boolean;
+    acronymCount: number;
+}> {
     const content = await fs.readFile(filePath, 'utf-8');
 
-    // Clean up the content by removing AsciiDoc-specific tags and code blocks
-    const cleanedContent = cleanAdocContent(content);
+    // Clean up the content by removing AsciiDoc/Markdown-specific tags and code blocks
+    const { cleanedText, hasCodeBlock } = cleanContent(content);
 
-    // Compute readability score
-    const score = fleschKincaid(cleanedContent);
-
-    // Prepend the score as a comment at the top of the file
+    // Compute readability score and rating
+    const score = fleschKincaid(cleanedText);
     const rating = getRating(score);
 
-    const newContent = `// Readability score: ${score.toFixed(2)}: ${rating}\n\n${content}`;
+    // Compute additional metrics
+    const lines = content.split('\n');
+    const lineCount = lines.length;
+
+    const sentences = cleanedText.split(/[.!?]+/).filter(Boolean);
+    const sentenceCount = sentences.length;
+
+    const words = cleanedText.split(/\s+/).filter(Boolean);
+    const wordCount = words.length;
+
+    const avgWordLength =
+        wordCount > 0 ? words.reduce((sum, word) => sum + word.length, 0) / wordCount : 0;
+
+    const avgSyllables =
+        wordCount > 0 ? words.reduce((sum, word) => sum + countSyllables(word), 0) / wordCount : 0;
+
+    const acronymCount = countAcronyms(cleanedText);
+
+    // Prepend the detailed metrics as comments at the top of the file.
+    const newContent =
+        `// Readability score: ${score.toFixed(2)}\n` +
+        `// ${rating}\n` +
+        `// File length: ${lineCount}, Sentence count: ${sentenceCount}, Word count: ${wordCount}, Average word length: ${avgWordLength.toFixed(
+            2
+        )}, Average syllables per word: ${avgSyllables.toFixed(
+            2
+        )}, Code present: ${hasCodeBlock ? 'Yes' : 'No'}, Acronyms: ${acronymCount}\n\n` +
+        content;
 
     await fs.writeFile(filePath, newContent);
 
-    return { filePath, score };
+    return {
+        filePath,
+        score,
+        lineCount,
+        sentenceCount,
+        wordCount,
+        avgWordLength,
+        avgSyllables,
+        hasCodeBlock,
+        acronymCount,
+    };
 }
 
 // Display progress bar in console
@@ -111,24 +168,36 @@ async function main() {
     const folderPath = process.argv[2] || process.cwd();
 
     try {
-        // Recursively scan directory for .adoc files
-        const adocFiles = await scanDirectory(folderPath);
+        // Recursively scan directory for .adoc and .md files
+        const filesToProcess = await scanDirectory(folderPath);
 
-        if (adocFiles.length === 0) {
-            console.log('No .adoc files found.');
+        if (filesToProcess.length === 0) {
+            console.log('No .adoc or .md files found.');
             process.exit(0);
         }
 
         let processedFilesCount = 0;
         let scoresSummary: string[] = [];
 
-        for (const file of adocFiles) {
-            const { filePath, score } = await processAdocFile(file);
+        for (const file of filesToProcess) {
+            const result = await processFile(file);
 
-            scoresSummary.push(`${filePath}: ${score.toFixed(2)}`);
+            scoresSummary.push(
+                `${result.filePath}, Readability score: ${result.score.toFixed(
+                    2
+                )}, File length: ${result.lineCount}, Sentence count: ${
+                    result.sentenceCount
+                }, Word count: ${result.wordCount}, Average word length: ${result.avgWordLength.toFixed(
+                    2
+                )}, Average syllables per word: ${result.avgSyllables.toFixed(
+                    2
+                )}, Code present: ${result.hasCodeBlock ? 'Yes' : 'No'}, Acronyms: ${
+                    result.acronymCount
+                }`
+            );
 
             processedFilesCount++;
-            displayProgressBar(processedFilesCount, adocFiles.length);
+            displayProgressBar(processedFilesCount, filesToProcess.length);
         }
 
         // Write scores summary to scores.txt in the top-level folder
@@ -137,8 +206,8 @@ async function main() {
         const endTime = performance.now();
         const totalTimeInSeconds = ((endTime - startTime) / 1000).toFixed(2);
 
-        console.log(`\nReadability scores computed! Total files: ${processedFilesCount} processed in ${totalTimeInSeconds} seconds.`);
-        console.log('Summary of scores are saved to scores.txt');
+        console.log(`\nReadability scores computed! Total files processed: ${processedFilesCount} in ${totalTimeInSeconds} seconds.`);
+        console.log('Summary of scores saved to scores.txt');
 
     } catch (error) {
         console.error('Error:', error.message);

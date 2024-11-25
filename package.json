@@ -1,7 +1,7 @@
 {
   "name": "@alexneri/readability-ts",
   "description": "A CLI app that runs the Flesch-kincaid readability score recursively on all *.adoc files in the current directory.",
-  "version": "0.7.5",
+  "version": "0.8.0",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "readability-ts": "node readability.js"
