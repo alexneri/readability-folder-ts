@@ -87,18 +87,26 @@ function getRating(score) {
         return 'College grad - Very difficult to read. Best understood by university graduates.';
     return 'Professional - Extremely difficult to read. Best understood by university graduates.';
 }
-// Remove AsciiDoc tags and code block formatting
-function cleanAdocContent(content) {
-    return content.replace(/(```[\s\S]*?```|==+|--+|\.\.\.\.|\[.*?\])/g, '').trim();
+// Remove AsciiDoc/Markdown tags and code block formatting
+function cleanContent(content) {
+    var hasCodeBlock = /```[\s\S]*?```|----/.test(content); // Detect code blocks
+    var cleanedText = content.replace(/(```[\s\S]*?```|==+|--+|\.\.\.\.|\[.*?\])/g, '').trim();
+    return { cleanedText: cleanedText, hasCodeBlock: hasCodeBlock };
 }
-// Recursively scan directory for .adoc files
+// Count acronyms in the text
+function countAcronyms(text) {
+    var acronymRegex = /\b[A-Z]{2,}\b/g; // Matches words with all uppercase letters of length >=2
+    var matches = text.match(acronymRegex);
+    return matches ? matches.length : 0;
+}
+// Recursively scan directory for .adoc and .md files
 function scanDirectory(dirPath) {
     return __awaiter(this, void 0, void 0, function () {
-        var adocFiles, files, _i, files_1, file, fullPath, _a, _b;
+        var filesToProcess, files, _i, files_1, file, fullPath, _a, _b;
         return __generator(this, function (_c) {
             switch (_c.label) {
                 case 0:
-                    adocFiles = [];
+                    filesToProcess = [];
                     return [4 /*yield*/, fs.readdir(dirPath, { withFileTypes: true })];
                 case 1:
                     files = _c.sent();
@@ -109,41 +117,64 @@ function scanDirectory(dirPath) {
                     file = files_1[_i];
                     fullPath = path.join(dirPath, file.name);
                     if (!file.isDirectory()) return [3 /*break*/, 4];
-                    _b = (_a = adocFiles).concat;
+                    _b = (_a = filesToProcess).concat;
                     return [4 /*yield*/, scanDirectory(fullPath)];
                 case 3:
-                    adocFiles = _b.apply(_a, [_c.sent()]);
+                    filesToProcess = _b.apply(_a, [_c.sent()]);
                     return [3 /*break*/, 5];
                 case 4:
-                    if (file.isFile() && file.name.endsWith('.adoc')) {
-                        adocFiles.push(fullPath);
+                    if (file.isFile() &&
+                        (file.name.endsWith('.adoc') || file.name.endsWith('.md'))) {
+                        filesToProcess.push(fullPath);
                     }
                     _c.label = 5;
                 case 5:
                     _i++;
                     return [3 /*break*/, 2];
-                case 6: return [2 /*return*/, adocFiles];
+                case 6: return [2 /*return*/, filesToProcess];
             }
         });
     });
 }
-// Process each .adoc file
-function processAdocFile(filePath) {
+// Process each file (.adoc or .md)
+function processFile(filePath) {
     return __awaiter(this, void 0, void 0, function () {
-        var content, cleanedContent, score, rating, newContent;
-        return __generator(this, function (_a) {
-            switch (_a.label) {
+        var content, _a, cleanedText, hasCodeBlock, score, rating, lines, lineCount, sentences, sentenceCount, words, wordCount, avgWordLength, avgSyllables, acronymCount, newContent;
+        return __generator(this, function (_b) {
+            switch (_b.label) {
                 case 0: return [4 /*yield*/, fs.readFile(filePath, 'utf-8')];
                 case 1:
-                    content = _a.sent();
-                    cleanedContent = cleanAdocContent(content);
-                    score = fleschKincaid(cleanedContent);
+                    content = _b.sent();
+                    _a = cleanContent(content), cleanedText = _a.cleanedText, hasCodeBlock = _a.hasCodeBlock;
+                    score = fleschKincaid(cleanedText);
                     rating = getRating(score);
-                    newContent = "// Readability score: ".concat(score.toFixed(2), ": ").concat(rating, "\n\n").concat(content);
+                    lines = content.split('\n');
+                    lineCount = lines.length;
+                    sentences = cleanedText.split(/[.!?]+/).filter(Boolean);
+                    sentenceCount = sentences.length;
+                    words = cleanedText.split(/\s+/).filter(Boolean);
+                    wordCount = words.length;
+                    avgWordLength = wordCount > 0 ? words.reduce(function (sum, word) { return sum + word.length; }, 0) / wordCount : 0;
+                    avgSyllables = wordCount > 0 ? words.reduce(function (sum, word) { return sum + countSyllables(word); }, 0) / wordCount : 0;
+                    acronymCount = countAcronyms(cleanedText);
+                    newContent = "// Readability score: ".concat(score.toFixed(2), "\n") +
+                        "// ".concat(rating, "\n") +
+                        "// File length: ".concat(lineCount, ", Sentence count: ").concat(sentenceCount, ", Word count: ").concat(wordCount, ", Average word length: ").concat(avgWordLength.toFixed(2), ", Average syllables per word: ").concat(avgSyllables.toFixed(2), ", Code present: ").concat(hasCodeBlock ? 'Yes' : 'No', ", Acronyms: ").concat(acronymCount, "\n\n") +
+                        content;
                     return [4 /*yield*/, fs.writeFile(filePath, newContent)];
                 case 2:
-                    _a.sent();
-                    return [2 /*return*/, { filePath: filePath, score: score }];
+                    _b.sent();
+                    return [2 /*return*/, {
+                            filePath: filePath,
+                            score: score,
+                            lineCount: lineCount,
+                            sentenceCount: sentenceCount,
+                            wordCount: wordCount,
+                            avgWordLength: avgWordLength,
+                            avgSyllables: avgSyllables,
+                            hasCodeBlock: hasCodeBlock,
+                            acronymCount: acronymCount,
+                        }];
             }
         });
     });
@@ -158,36 +189,36 @@ function displayProgressBar(processed, total) {
 // Main function to run the app
 function main() {
     return __awaiter(this, void 0, void 0, function () {
-        var startTime, folderPath, adocFiles, processedFilesCount, scoresSummary, _i, adocFiles_1, file, _a, filePath, score, endTime, totalTimeInSeconds, error_1;
-        return __generator(this, function (_b) {
-            switch (_b.label) {
+        var startTime, folderPath, filesToProcess, processedFilesCount, scoresSummary, _i, filesToProcess_1, file, result, endTime, totalTimeInSeconds, error_1;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
                 case 0:
                     startTime = perf_hooks_1.performance.now();
                     folderPath = process.argv[2] || process.cwd();
-                    _b.label = 1;
+                    _a.label = 1;
                 case 1:
-                    _b.trys.push([1, 8, , 9]);
+                    _a.trys.push([1, 8, , 9]);
                     return [4 /*yield*/, scanDirectory(folderPath)];
                 case 2:
-                    adocFiles = _b.sent();
-                    if (adocFiles.length === 0) {
-                        console.log('No .adoc files found.');
+                    filesToProcess = _a.sent();
+                    if (filesToProcess.length === 0) {
+                        console.log('No .adoc or .md files found.');
                         process.exit(0);
                     }
                     processedFilesCount = 0;
                     scoresSummary = [];
-                    _i = 0, adocFiles_1 = adocFiles;
-                    _b.label = 3;
+                    _i = 0, filesToProcess_1 = filesToProcess;
+                    _a.label = 3;
                 case 3:
-                    if (!(_i < adocFiles_1.length)) return [3 /*break*/, 6];
-                    file = adocFiles_1[_i];
-                    return [4 /*yield*/, processAdocFile(file)];
+                    if (!(_i < filesToProcess_1.length)) return [3 /*break*/, 6];
+                    file = filesToProcess_1[_i];
+                    return [4 /*yield*/, processFile(file)];
                 case 4:
-                    _a = _b.sent(), filePath = _a.filePath, score = _a.score;
-                    scoresSummary.push("".concat(filePath, ": ").concat(score.toFixed(2)));
+                    result = _a.sent();
+                    scoresSummary.push("".concat(result.filePath, ", Readability score: ").concat(result.score.toFixed(2), ", File length: ").concat(result.lineCount, ", Sentence count: ").concat(result.sentenceCount, ", Word count: ").concat(result.wordCount, ", Average word length: ").concat(result.avgWordLength.toFixed(2), ", Average syllables per word: ").concat(result.avgSyllables.toFixed(2), ", Code present: ").concat(result.hasCodeBlock ? 'Yes' : 'No', ", Acronyms: ").concat(result.acronymCount));
                     processedFilesCount++;
-                    displayProgressBar(processedFilesCount, adocFiles.length);
-                    _b.label = 5;
+                    displayProgressBar(processedFilesCount, filesToProcess.length);
+                    _a.label = 5;
                 case 5:
                     _i++;
                     return [3 /*break*/, 3];
@@ -196,14 +227,14 @@ function main() {
                 return [4 /*yield*/, fs.writeFile(path.join(folderPath, 'scores.txt'), scoresSummary.join('\n'))];
                 case 7:
                     // Write scores summary to scores.txt in the top-level folder
-                    _b.sent();
+                    _a.sent();
                     endTime = perf_hooks_1.performance.now();
                     totalTimeInSeconds = ((endTime - startTime) / 1000).toFixed(2);
-                    console.log("\nReadability scores computed! Total files: ".concat(processedFilesCount, " processed in ").concat(totalTimeInSeconds, " seconds."));
-                    console.log('Summary of scores are saved to scores.txt');
+                    console.log("\nReadability scores computed! Total files processed: ".concat(processedFilesCount, " in ").concat(totalTimeInSeconds, " seconds."));
+                    console.log('Summary of scores saved to scores.txt');
                     return [3 /*break*/, 9];
                 case 8:
-                    error_1 = _b.sent();
+                    error_1 = _a.sent();
                     console.error('Error:', error_1.message);
                     process.exit(1);
                     return [3 /*break*/, 9];
