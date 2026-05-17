@@ -1,246 +1,345 @@
 #!/usr/bin/env node
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
-var __generator = (this && this.__generator) || function (thisArg, body) {
-    var _ = { label: 0, sent: function() { if (t[0] & 1) throw t[1]; return t[1]; }, trys: [], ops: [] }, f, y, t, g = Object.create((typeof Iterator === "function" ? Iterator : Object).prototype);
-    return g.next = verb(0), g["throw"] = verb(1), g["return"] = verb(2), typeof Symbol === "function" && (g[Symbol.iterator] = function() { return this; }), g;
-    function verb(n) { return function (v) { return step([n, v]); }; }
-    function step(op) {
-        if (f) throw new TypeError("Generator is already executing.");
-        while (g && (g = 0, op[0] && (_ = 0)), _) try {
-            if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
-            if (y = 0, t) op = [op[0] & 2, t.value];
-            switch (op[0]) {
-                case 0: case 1: t = op; break;
-                case 4: _.label++; return { value: op[1], done: false };
-                case 5: _.label++; y = op[1]; op = [0]; continue;
-                case 7: op = _.ops.pop(); _.trys.pop(); continue;
-                default:
-                    if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) { _ = 0; continue; }
-                    if (op[0] === 3 && (!t || (op[1] > t[0] && op[1] < t[3]))) { _.label = op[1]; break; }
-                    if (op[0] === 6 && _.label < t[1]) { _.label = t[1]; t = op; break; }
-                    if (t && _.label < t[2]) { _.label = t[2]; _.ops.push(op); break; }
-                    if (t[2]) _.ops.pop();
-                    _.trys.pop(); continue;
-            }
-            op = body.call(thisArg, _);
-        } catch (e) { op = [6, e]; y = 0; } finally { f = t = 0; }
-        if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
     }
-};
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
-var fs = require("fs/promises");
-var path = require("path");
-var perf_hooks_1 = require("perf_hooks");
-// Flesch-Kincaid readability score calculation
-function fleschKincaid(text) {
-    var sentences = text.split(/[.!?]+/).filter(Boolean).length;
-    var words = text.split(/\s+/).filter(Boolean).length;
-    var syllables = text.split(/\s+/).reduce(function (acc, word) { return acc + countSyllables(word); }, 0);
-    var score = 206.835 - 1.015 * (words / sentences) - 84.6 * (syllables / words);
-    return Math.max(0, Math.min(100, score)); // Clamp score between 0 and 100
+const fs = __importStar(require("fs/promises"));
+const path = __importStar(require("path"));
+const perf_hooks_1 = require("perf_hooks");
+const SUPPORTED_EXTENSIONS = new Map([
+    ['.adoc', 'asciidoc'],
+    ['.asciidoc', 'asciidoc'],
+    ['.md', 'markdown'],
+    ['.markdown', 'markdown'],
+    ['.mdx', 'markdown'],
+]);
+const EXCLUDED_DIRS = new Set([
+    '.git', 'node_modules', 'dist', 'build', 'out',
+    '.next', '.nuxt', '.cache', 'coverage', '.idea', '.vscode',
+]);
+const CONCURRENCY = 8;
+const HEADER_START = 'readability-score:start';
+const HEADER_END = 'readability-score:end';
+function detectFormat(filePath) {
+    var _a;
+    const ext = path.extname(filePath).toLowerCase();
+    return (_a = SUPPORTED_EXTENSIONS.get(ext)) !== null && _a !== void 0 ? _a : null;
 }
-// Helper function to count syllables in a word
 function countSyllables(word) {
-    word = word.toLowerCase();
-    if (word.length <= 3)
-        return 1; // Treat short words as having one syllable
-    var vowels = ['a', 'e', 'i', 'o', 'u', 'y'];
-    var syllableCount = 0;
-    var prevCharWasVowel = false;
-    for (var _i = 0, word_1 = word; _i < word_1.length; _i++) {
-        var char = word_1[_i];
-        var isVowel = vowels.includes(char);
-        if (isVowel && !prevCharWasVowel) {
-            syllableCount++;
-        }
-        prevCharWasVowel = isVowel;
+    const w = word.toLowerCase().replace(/[^a-z]/g, '');
+    if (w.length === 0)
+        return 0;
+    if (w.length <= 3)
+        return 1;
+    const vowels = 'aeiouy';
+    let count = 0;
+    let prevWasVowel = false;
+    for (const c of w) {
+        const isVowel = vowels.includes(c);
+        if (isVowel && !prevWasVowel)
+            count++;
+        prevWasVowel = isVowel;
     }
-    // Remove silent 'e'
-    if (word.endsWith('e'))
-        syllableCount--;
-    return Math.max(1, syllableCount); // Ensure at least one syllable
+    if (w.endsWith('e'))
+        count--;
+    return Math.max(1, count);
 }
-// Rating system based on Flesch-Kincaid score
+function tokenize(text) {
+    const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0).length;
+    const words = text.split(/\s+/).filter(Boolean);
+    const syllableCounts = words.map(countSyllables);
+    return { sentences, words, syllableCounts };
+}
+function fleschKincaid(tokens) {
+    const { words, syllableCounts } = tokens;
+    if (words.length === 0)
+        return 0;
+    const sentenceCount = Math.max(tokens.sentences, 1);
+    const totalSyllables = syllableCounts.reduce((a, b) => a + b, 0);
+    const score = 206.835
+        - 1.015 * (words.length / sentenceCount)
+        - 84.6 * (totalSyllables / words.length);
+    return Math.max(0, Math.min(100, score));
+}
 function getRating(score) {
-    if (score >= 100)
-        return '5th grade level - Very easy to read. Easily understood by an average 11-year-old student.';
     if (score >= 90)
-        return '6th grade level - Very easy to read. Easily understood by an average 11-year-old student.';
+        return '5th-6th grade level - Very easy to read.';
     if (score >= 80)
         return '7th grade level - Fairly easy to read.';
     if (score >= 70)
-        return '8th & 9th grade - Plain English. Easily understood by 13- to 15-year-old students.';
+        return '8th & 9th grade - Plain English.';
     if (score >= 60)
-        return '10th - 12th grade - Fairly difficult to read.';
+        return '10th-12th grade - Fairly difficult to read.';
     if (score >= 50)
         return 'College - Difficult to read.';
     if (score >= 30)
-        return 'College grad - Very difficult to read. Best understood by university graduates.';
-    return 'Professional - Extremely difficult to read. Best understood by university graduates.';
+        return 'College grad - Very difficult to read.';
+    return 'Professional - Extremely difficult to read.';
 }
-// Remove AsciiDoc/Markdown tags and code block formatting
-function cleanContent(content) {
-    var hasCodeBlock = /```[\s\S]*?```|----/.test(content); // Detect code blocks
-    var cleanedText = content.replace(/(```[\s\S]*?```|==+|--+|\.\.\.\.|\[.*?\])/g, '').trim();
-    return { cleanedText: cleanedText, hasCodeBlock: hasCodeBlock };
+function stripExistingHeader(content, format) {
+    const startPattern = format === 'markdown'
+        ? /<!--\s*readability-score:start\s*-->/
+        : /\/\/\s*readability-score:start/;
+    const endPattern = format === 'markdown'
+        ? /<!--\s*readability-score:end\s*-->\n?/
+        : /\/\/\s*readability-score:end\n?/;
+    const startMatch = startPattern.exec(content);
+    if (!startMatch)
+        return content;
+    const afterStart = content.slice(startMatch.index);
+    const endMatch = endPattern.exec(afterStart);
+    if (!endMatch)
+        return content;
+    const cutEnd = startMatch.index + endMatch.index + endMatch[0].length;
+    return (content.slice(0, startMatch.index) + content.slice(cutEnd)).replace(/^\n+/, '');
 }
-// Count acronyms in the text
+function stripLegacyHeader(content) {
+    if (!/^\/\/ Readability score: \d/.test(content))
+        return content;
+    const lines = content.split('\n');
+    let i = 0;
+    while (i < 3 && i < lines.length && lines[i].startsWith('//'))
+        i++;
+    while (i < lines.length && lines[i].trim() === '')
+        i++;
+    return lines.slice(i).join('\n');
+}
+function stripMarkdown(content) {
+    let text = content;
+    let hasCodeBlock = false;
+    text = text.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, '');
+    text = text.replace(/```[\s\S]*?```|~~~[\s\S]*?~~~/g, () => { hasCodeBlock = true; return ''; });
+    if (/(^|\n)( {4}|\t)\S/.test(text))
+        hasCodeBlock = true;
+    text = text.replace(/(^|\n)( {4}|\t)[^\n]*/g, '$1');
+    text = text.replace(/`[^`\n]+`/g, '');
+    text = text.replace(/<!--[\s\S]*?-->/g, '');
+    text = text.replace(/<\/?[a-zA-Z][^>]*>/g, '');
+    text = text.replace(/!\[[^\]]*\]\([^)]*\)/g, '');
+    text = text.replace(/\[([^\]]+)\]\([^)]*\)/g, '$1');
+    text = text.replace(/^\s*\[[^\]]+\]:\s*\S+.*$/gm, '');
+    text = text.replace(/^\s{0,3}#{1,6}\s+/gm, '');
+    text = text.replace(/^\s{0,3}>\s?/gm, '');
+    text = text.replace(/^\s*[-*+]\s+/gm, '');
+    text = text.replace(/^\s*\d+\.\s+/gm, '');
+    text = text.replace(/^[=\-*_]{2,}\s*$/gm, '');
+    text = text.replace(/^\s*\|?\s*[-:]+(\s*\|\s*[-:]+)+\s*\|?\s*$/gm, '');
+    text = text.replace(/\|/g, ' ');
+    text = text.replace(/(\*\*|__)(.+?)\1/g, '$2');
+    text = text.replace(/(\*|_)(.+?)\1/g, '$2');
+    text = text.replace(/~~(.+?)~~/g, '$1');
+    return { cleaned: text.trim(), hasCodeBlock };
+}
+function stripAsciidoc(content) {
+    let text = content;
+    let hasCodeBlock = false;
+    text = text.replace(/^----\s*\r?\n[\s\S]*?\r?\n----\s*$/gm, () => { hasCodeBlock = true; return ''; });
+    text = text.replace(/^\.\.\.\.\s*\r?\n[\s\S]*?\r?\n\.\.\.\.\s*$/gm, () => { hasCodeBlock = true; return ''; });
+    text = text.replace(/```[\s\S]*?```/g, () => { hasCodeBlock = true; return ''; });
+    text = text.replace(/^\/\/.*$/gm, '');
+    text = text.replace(/^\[[^\]]*\]\s*$/gm, '');
+    text = text.replace(/\[\[[^\]]+\]\]/g, '');
+    text = text.replace(/<<[^>]+>>/g, '');
+    text = text.replace(/^[a-zA-Z]+::[^\n]*$/gm, '');
+    text = text.replace(/^=+\s+/gm, '');
+    text = text.replace(/^\s*[-*]\s+/gm, '');
+    text = text.replace(/^\s*\.+\s+/gm, '');
+    text = text.replace(/`([^`\n]+)`/g, '$1');
+    text = text.replace(/\*([^*\n]+)\*/g, '$1');
+    text = text.replace(/_([^_\n]+)_/g, '$1');
+    return { cleaned: text.trim(), hasCodeBlock };
+}
+function clean(content, format) {
+    return format === 'markdown' ? stripMarkdown(content) : stripAsciidoc(content);
+}
 function countAcronyms(text) {
-    var acronymRegex = /\b[A-Z]{2,}\b/g; // Matches words with all uppercase letters of length >=2
-    var matches = text.match(acronymRegex);
+    const matches = text.match(/\b[A-Z]{2,}\b/g);
     return matches ? matches.length : 0;
 }
-// Recursively scan directory for .adoc and .md files
-function scanDirectory(dirPath) {
-    return __awaiter(this, void 0, void 0, function () {
-        var filesToProcess, files, _i, files_1, file, fullPath, _a, _b;
-        return __generator(this, function (_c) {
-            switch (_c.label) {
-                case 0:
-                    filesToProcess = [];
-                    return [4 /*yield*/, fs.readdir(dirPath, { withFileTypes: true })];
-                case 1:
-                    files = _c.sent();
-                    _i = 0, files_1 = files;
-                    _c.label = 2;
-                case 2:
-                    if (!(_i < files_1.length)) return [3 /*break*/, 6];
-                    file = files_1[_i];
-                    fullPath = path.join(dirPath, file.name);
-                    if (!file.isDirectory()) return [3 /*break*/, 4];
-                    _b = (_a = filesToProcess).concat;
-                    return [4 /*yield*/, scanDirectory(fullPath)];
-                case 3:
-                    filesToProcess = _b.apply(_a, [_c.sent()]);
-                    return [3 /*break*/, 5];
-                case 4:
-                    if (file.isFile() &&
-                        (file.name.endsWith('.adoc') || file.name.endsWith('.md'))) {
-                        filesToProcess.push(fullPath);
-                    }
-                    _c.label = 5;
-                case 5:
-                    _i++;
-                    return [3 /*break*/, 2];
-                case 6: return [2 /*return*/, filesToProcess];
-            }
-        });
-    });
+function formatHeader(stats, format) {
+    const lines = [
+        HEADER_START,
+        `Readability score: ${stats.score.toFixed(2)}`,
+        stats.rating,
+        `File length: ${stats.lineCount}, Sentence count: ${stats.sentenceCount}, ` +
+            `Word count: ${stats.wordCount}, Average word length: ${stats.avgWordLength.toFixed(2)}, ` +
+            `Average syllables per word: ${stats.avgSyllables.toFixed(2)}, ` +
+            `Code present: ${stats.hasCodeBlock ? 'Yes' : 'No'}, Acronyms: ${stats.acronymCount}`,
+        HEADER_END,
+    ];
+    const wrapped = format === 'markdown'
+        ? lines.map(l => `<!-- ${l} -->`)
+        : lines.map(l => `// ${l}`);
+    return wrapped.join('\n') + '\n\n';
 }
-// Process each file (.adoc or .md)
-function processFile(filePath) {
-    return __awaiter(this, void 0, void 0, function () {
-        var content, _a, cleanedText, hasCodeBlock, score, rating, lines, lineCount, sentences, sentenceCount, words, wordCount, avgWordLength, avgSyllables, acronymCount, newContent;
-        return __generator(this, function (_b) {
-            switch (_b.label) {
-                case 0: return [4 /*yield*/, fs.readFile(filePath, 'utf-8')];
-                case 1:
-                    content = _b.sent();
-                    _a = cleanContent(content), cleanedText = _a.cleanedText, hasCodeBlock = _a.hasCodeBlock;
-                    score = fleschKincaid(cleanedText);
-                    rating = getRating(score);
-                    lines = content.split('\n');
-                    lineCount = lines.length;
-                    sentences = cleanedText.split(/[.!?]+/).filter(Boolean);
-                    sentenceCount = sentences.length;
-                    words = cleanedText.split(/\s+/).filter(Boolean);
-                    wordCount = words.length;
-                    avgWordLength = wordCount > 0 ? words.reduce(function (sum, word) { return sum + word.length; }, 0) / wordCount : 0;
-                    avgSyllables = wordCount > 0 ? words.reduce(function (sum, word) { return sum + countSyllables(word); }, 0) / wordCount : 0;
-                    acronymCount = countAcronyms(cleanedText);
-                    newContent = "// Readability score: ".concat(score.toFixed(2), "\n") +
-                        "// ".concat(rating, "\n") +
-                        "// File length: ".concat(lineCount, ", Sentence count: ").concat(sentenceCount, ", Word count: ").concat(wordCount, ", Average word length: ").concat(avgWordLength.toFixed(2), ", Average syllables per word: ").concat(avgSyllables.toFixed(2), ", Code present: ").concat(hasCodeBlock ? 'Yes' : 'No', ", Acronyms: ").concat(acronymCount, "\n\n") +
-                        content;
-                    return [4 /*yield*/, fs.writeFile(filePath, newContent)];
-                case 2:
-                    _b.sent();
-                    return [2 /*return*/, {
-                            filePath: filePath,
-                            score: score,
-                            lineCount: lineCount,
-                            sentenceCount: sentenceCount,
-                            wordCount: wordCount,
-                            avgWordLength: avgWordLength,
-                            avgSyllables: avgSyllables,
-                            hasCodeBlock: hasCodeBlock,
-                            acronymCount: acronymCount,
-                        }];
-            }
-        });
-    });
+async function scanDirectory(dirPath, seen = new Set()) {
+    const real = await fs.realpath(dirPath).catch(() => dirPath);
+    if (seen.has(real))
+        return [];
+    seen.add(real);
+    const out = [];
+    let entries;
+    try {
+        entries = await fs.readdir(dirPath, { withFileTypes: true });
+    }
+    catch {
+        return out;
+    }
+    for (const entry of entries) {
+        const fullPath = path.join(dirPath, entry.name);
+        if (entry.isDirectory()) {
+            if (EXCLUDED_DIRS.has(entry.name))
+                continue;
+            const sub = await scanDirectory(fullPath, seen);
+            for (const f of sub)
+                out.push(f);
+        }
+        else if (entry.isFile() && detectFormat(entry.name)) {
+            out.push(fullPath);
+        }
+    }
+    return out;
 }
-// Display progress bar in console
+async function processFile(filePath, dryRun) {
+    const format = detectFormat(filePath);
+    if (!format)
+        throw new Error(`Unsupported file: ${filePath}`);
+    const raw = await fs.readFile(filePath, 'utf-8');
+    const withoutLegacy = stripLegacyHeader(raw);
+    const content = stripExistingHeader(withoutLegacy, format);
+    const { cleaned, hasCodeBlock } = clean(content, format);
+    const tokens = tokenize(cleaned);
+    const score = fleschKincaid(tokens);
+    const wordCount = tokens.words.length;
+    const totalSyllables = tokens.syllableCounts.reduce((a, b) => a + b, 0);
+    const totalWordLength = tokens.words.reduce((sum, w) => sum + w.length, 0);
+    const stats = {
+        score,
+        rating: getRating(score),
+        lineCount: content.split('\n').length,
+        sentenceCount: tokens.sentences,
+        wordCount,
+        avgWordLength: wordCount > 0 ? totalWordLength / wordCount : 0,
+        avgSyllables: wordCount > 0 ? totalSyllables / wordCount : 0,
+        hasCodeBlock,
+        acronymCount: countAcronyms(cleaned),
+    };
+    if (!dryRun) {
+        await fs.writeFile(filePath, formatHeader(stats, format) + content);
+    }
+    return stats;
+}
+async function processWithConcurrency(items, limit, worker, onDone) {
+    let cursor = 0;
+    const runners = Array.from({ length: Math.min(limit, items.length) }, async () => {
+        while (cursor < items.length) {
+            const i = cursor++;
+            const item = items[i];
+            const result = await worker(item);
+            onDone(item, result);
+        }
+    });
+    await Promise.all(runners);
+}
 function displayProgressBar(processed, total) {
-    var percentage = Math.floor((processed / total) * 100);
+    if (!process.stdout.isTTY)
+        return;
+    const pct = Math.floor((processed / total) * 100);
+    const filled = Math.floor(pct / 2);
     process.stdout.clearLine(0);
     process.stdout.cursorTo(0);
-    process.stdout.write("Progress: [".concat('='.repeat(percentage / 2)).concat(' '.repeat(50 - percentage / 2), "] ").concat(percentage, "%"));
+    process.stdout.write(`Progress: [${'='.repeat(filled)}${' '.repeat(50 - filled)}] ${pct}%`);
 }
-// Main function to run the app
-function main() {
-    return __awaiter(this, void 0, void 0, function () {
-        var startTime, folderPath, filesToProcess, processedFilesCount, scoresSummary, _i, filesToProcess_1, file, result, endTime, totalTimeInSeconds, error_1;
-        return __generator(this, function (_a) {
-            switch (_a.label) {
-                case 0:
-                    startTime = perf_hooks_1.performance.now();
-                    folderPath = process.argv[2] || process.cwd();
-                    _a.label = 1;
-                case 1:
-                    _a.trys.push([1, 8, , 9]);
-                    return [4 /*yield*/, scanDirectory(folderPath)];
-                case 2:
-                    filesToProcess = _a.sent();
-                    if (filesToProcess.length === 0) {
-                        console.log('No .adoc or .md files found.');
-                        process.exit(0);
-                    }
-                    processedFilesCount = 0;
-                    scoresSummary = [];
-                    _i = 0, filesToProcess_1 = filesToProcess;
-                    _a.label = 3;
-                case 3:
-                    if (!(_i < filesToProcess_1.length)) return [3 /*break*/, 6];
-                    file = filesToProcess_1[_i];
-                    return [4 /*yield*/, processFile(file)];
-                case 4:
-                    result = _a.sent();
-                    scoresSummary.push("".concat(result.filePath, ", Readability score: ").concat(result.score.toFixed(2), ", File length: ").concat(result.lineCount, ", Sentence count: ").concat(result.sentenceCount, ", Word count: ").concat(result.wordCount, ", Average word length: ").concat(result.avgWordLength.toFixed(2), ", Average syllables per word: ").concat(result.avgSyllables.toFixed(2), ", Code present: ").concat(result.hasCodeBlock ? 'Yes' : 'No', ", Acronyms: ").concat(result.acronymCount));
-                    processedFilesCount++;
-                    displayProgressBar(processedFilesCount, filesToProcess.length);
-                    _a.label = 5;
-                case 5:
-                    _i++;
-                    return [3 /*break*/, 3];
-                case 6: 
-                // Write scores summary to scores.txt in the top-level folder
-                return [4 /*yield*/, fs.writeFile(path.join(folderPath, 'scores.txt'), scoresSummary.join('\n'))];
-                case 7:
-                    // Write scores summary to scores.txt in the top-level folder
-                    _a.sent();
-                    endTime = perf_hooks_1.performance.now();
-                    totalTimeInSeconds = ((endTime - startTime) / 1000).toFixed(2);
-                    console.log("\nReadability scores computed! Total files processed: ".concat(processedFilesCount, " in ").concat(totalTimeInSeconds, " seconds."));
-                    console.log('Summary of scores saved to scores.txt');
-                    return [3 /*break*/, 9];
-                case 8:
-                    error_1 = _a.sent();
-                    console.error('Error:', error_1.message);
-                    process.exit(1);
-                    return [3 /*break*/, 9];
-                case 9: return [2 /*return*/];
-            }
+function parseArgs(argv) {
+    const args = argv.slice(2);
+    const dryRun = args.includes('--dry-run') || args.includes('-n');
+    const help = args.includes('--help') || args.includes('-h');
+    const positional = args.filter(a => !a.startsWith('-'));
+    const folderPath = positional[0] || process.cwd();
+    return { folderPath, dryRun, help };
+}
+function printHelp() {
+    console.log('Usage: readability-ts [path] [options]\n\n' +
+        'Computes Flesch-Kincaid readability scores for AsciiDoc and Markdown files.\n\n' +
+        'Arguments:\n' +
+        '  path           Folder to scan (defaults to current directory)\n\n' +
+        'Options:\n' +
+        '  -n, --dry-run  Compute scores without modifying files or writing scores.txt\n' +
+        '  -h, --help     Show this message\n\n' +
+        'Supported extensions: .adoc, .asciidoc, .md, .markdown, .mdx');
+}
+async function main() {
+    const start = perf_hooks_1.performance.now();
+    const { folderPath, dryRun, help } = parseArgs(process.argv);
+    if (help) {
+        printHelp();
+        return;
+    }
+    try {
+        const files = await scanDirectory(folderPath);
+        if (files.length === 0) {
+            console.log('No supported files found (.adoc, .asciidoc, .md, .markdown, .mdx).');
+            return;
+        }
+        const summary = [];
+        let done = 0;
+        await processWithConcurrency(files, CONCURRENCY, file => processFile(file, dryRun), (file, stats) => {
+            summary.push(`${file}, Readability score: ${stats.score.toFixed(2)}` +
+                `, File length: ${stats.lineCount}` +
+                `, Sentence count: ${stats.sentenceCount}` +
+                `, Word count: ${stats.wordCount}` +
+                `, Average word length: ${stats.avgWordLength.toFixed(2)}` +
+                `, Average syllables per word: ${stats.avgSyllables.toFixed(2)}` +
+                `, Code present: ${stats.hasCodeBlock ? 'Yes' : 'No'}` +
+                `, Acronyms: ${stats.acronymCount}`);
+            done++;
+            displayProgressBar(done, files.length);
         });
-    });
+        summary.sort();
+        if (!dryRun) {
+            await fs.writeFile(path.join(folderPath, 'scores.txt'), summary.join('\n') + '\n');
+        }
+        const seconds = ((perf_hooks_1.performance.now() - start) / 1000).toFixed(2);
+        const suffix = dryRun ? ' (dry-run: no files were modified)' : '';
+        console.log(`\nReadability scores computed! Total files processed: ${done} in ${seconds} seconds.${suffix}`);
+        if (!dryRun)
+            console.log('Summary of scores saved to scores.txt');
+    }
+    catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error('Error:', message);
+        process.exit(1);
+    }
 }
-main();
+void main();

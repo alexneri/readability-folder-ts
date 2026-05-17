@@ -1,0 +1,6 @@
+dist/
+*.log
+.DS_Store
+scores.txt
+node_modules/.bin/
+node_modules/typescript/
