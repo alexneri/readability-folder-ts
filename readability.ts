@@ -5,8 +5,9 @@ import * as path from 'path';
 import { performance } from 'perf_hooks';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const pkg = require('./package.json') as { version: string };
+const pkg = require('./package.json') as { version: string; homepage?: string };
 const VERSION: string = pkg.version;
+const HOMEPAGE: string | undefined = pkg.homepage;
 
 const RELEASE_NOTES = `What's new in readability-ts v${VERSION}
 
@@ -24,7 +25,7 @@ const RELEASE_NOTES = `What's new in readability-ts v${VERSION}
 
 For the full changelog see:
 https://github.com/alexneri/readability-folder-ts/commits/main
-`;
+${HOMEPAGE ? `\nFind out more: ${HOMEPAGE}\n` : ''}`;
 
 type FileFormat = 'asciidoc' | 'markdown';
 

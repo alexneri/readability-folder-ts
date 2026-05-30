@@ -40,6 +40,7 @@ const perf_hooks_1 = require("perf_hooks");
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const pkg = require('./package.json');
 const VERSION = pkg.version;
+const HOMEPAGE = pkg.homepage;
 const RELEASE_NOTES = `What's new in readability-ts v${VERSION}
 
 * Idempotent re-runs: existing readability headers are detected via
@@ -56,7 +57,7 @@ const RELEASE_NOTES = `What's new in readability-ts v${VERSION}
 
 For the full changelog see:
 https://github.com/alexneri/readability-folder-ts/commits/main
-`;
+${HOMEPAGE ? `\nFind out more: ${HOMEPAGE}\n` : ''}`;
 const SUPPORTED_EXTENSIONS = new Map([
     ['.adoc', 'asciidoc'],
     ['.asciidoc', 'asciidoc'],
