@@ -4,6 +4,29 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { performance } from 'perf_hooks';
 
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const pkg = require('./package.json') as { version: string; homepage?: string };
+const VERSION: string = pkg.version;
+const HOMEPAGE: string | undefined = pkg.homepage;
+
+const RELEASE_NOTES = `What's new in readability-ts v${VERSION}
+
+* Idempotent re-runs: existing readability headers are detected via
+  readability-score:start / readability-score:end sentinels and replaced
+  in place, so re-running the tool no longer stacks duplicate headers.
+* Legacy headers written by pre-0.9 versions are auto-migrated on the
+  next run.
+* Added --dry-run (-n): compute scores without modifying files or
+  writing scores.txt.
+* Added --version (-v) and --whats-new (--release-notes, -rn).
+* Default-skip vendored and build directories: node_modules, .git,
+  dist, build, out, .next, .nuxt, .cache, coverage, .idea, .vscode.
+* Concurrent processing (8 files at a time) and a TTY progress bar.
+
+For the full changelog see:
+https://github.com/alexneri/readability-folder-ts/commits/main
+${HOMEPAGE ? `\nFind out more: ${HOMEPAGE}\n` : ''}`;
+
 type FileFormat = 'asciidoc' | 'markdown';
 
 const SUPPORTED_EXTENSIONS: ReadonlyMap<string, FileFormat> = new Map([
@@ -283,15 +306,21 @@ interface CliArgs {
     folderPath: string;
     dryRun: boolean;
     help: boolean;
+    version: boolean;
+    whatsNew: boolean;
 }
 
 function parseArgs(argv: string[]): CliArgs {
     const args = argv.slice(2);
     const dryRun = args.includes('--dry-run') || args.includes('-n');
     const help = args.includes('--help') || args.includes('-h');
+    const version = args.includes('--version') || args.includes('-v');
+    const whatsNew = args.includes('--whats-new')
+        || args.includes('--release-notes')
+        || args.includes('-rn');
     const positional = args.filter(a => !a.startsWith('-'));
     const folderPath = positional[0] || process.cwd();
-    return { folderPath, dryRun, help };
+    return { folderPath, dryRun, help, version, whatsNew };
 }
 
 function printHelp(): void {
@@ -299,20 +328,43 @@ function printHelp(): void {
         'Usage: readability-ts [path] [options]\n\n' +
         'Computes Flesch-Kincaid readability scores for AsciiDoc and Markdown files.\n\n' +
         'Arguments:\n' +
-        '  path           Folder to scan (defaults to current directory)\n\n' +
+        '  path                          Folder to scan (defaults to current directory)\n\n' +
         'Options:\n' +
-        '  -n, --dry-run  Compute scores without modifying files or writing scores.txt\n' +
-        '  -h, --help     Show this message\n\n' +
-        'Supported extensions: .adoc, .asciidoc, .md, .markdown, .mdx'
+        '  -n,  --dry-run                Compute scores without modifying files or writing scores.txt\n' +
+        '  -v,  --version                Print the installed version and exit\n' +
+        '  -rn, --whats-new,\n' +
+        '       --release-notes          Print release notes for the current version and exit\n' +
+        '  -h,  --help                   Show this message and exit\n\n' +
+        'Supported extensions: .adoc, .asciidoc, .md, .markdown, .mdx\n\n' +
+        'Examples:\n' +
+        '  readability-ts                Scan the current folder\n' +
+        '  readability-ts ./docs         Scan a specific folder\n' +
+        '  readability-ts ./docs -n      Preview scores without writing anything'
     );
+}
+
+function printVersion(): void {
+    console.log(`readability-ts v${VERSION}`);
+}
+
+function printWhatsNew(): void {
+    console.log(RELEASE_NOTES);
 }
 
 async function main(): Promise<void> {
     const start = performance.now();
-    const { folderPath, dryRun, help } = parseArgs(process.argv);
+    const { folderPath, dryRun, help, version, whatsNew } = parseArgs(process.argv);
 
     if (help) {
         printHelp();
+        return;
+    }
+    if (version) {
+        printVersion();
+        return;
+    }
+    if (whatsNew) {
+        printWhatsNew();
         return;
     }
 
