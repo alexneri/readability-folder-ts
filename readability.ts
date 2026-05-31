@@ -6,10 +6,10 @@ import { performance } from 'perf_hooks';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const pkg = require('./package.json') as { version: string; homepage?: string };
-const VERSION: string = pkg.version;
-const HOMEPAGE: string | undefined = pkg.homepage;
+export const VERSION: string = pkg.version;
+export const HOMEPAGE: string | undefined = pkg.homepage;
 
-const RELEASE_NOTES = `What's new in readability-ts v${VERSION}
+export const RELEASE_NOTES = `What's new in readability-ts v${VERSION}
 
 * Idempotent re-runs: existing readability headers are detected via
   readability-score:start / readability-score:end sentinels and replaced
@@ -65,12 +65,12 @@ interface FileStats {
     acronymCount: number;
 }
 
-function detectFormat(filePath: string): FileFormat | null {
+export function detectFormat(filePath: string): FileFormat | null {
     const ext = path.extname(filePath).toLowerCase();
     return SUPPORTED_EXTENSIONS.get(ext) ?? null;
 }
 
-function countSyllables(word: string): number {
+export function countSyllables(word: string): number {
     const w = word.toLowerCase().replace(/[^a-z]/g, '');
     if (w.length === 0) return 0;
     if (w.length <= 3) return 1;
@@ -87,14 +87,14 @@ function countSyllables(word: string): number {
     return Math.max(1, count);
 }
 
-function tokenize(text: string): Tokens {
+export function tokenize(text: string): Tokens {
     const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0).length;
     const words = text.split(/\s+/).filter(Boolean);
     const syllableCounts = words.map(countSyllables);
     return { sentences, words, syllableCounts };
 }
 
-function fleschKincaid(tokens: Tokens): number {
+export function fleschKincaid(tokens: Tokens): number {
     const { words, syllableCounts } = tokens;
     if (words.length === 0) return 0;
     const sentenceCount = Math.max(tokens.sentences, 1);
@@ -105,7 +105,7 @@ function fleschKincaid(tokens: Tokens): number {
     return Math.max(0, Math.min(100, score));
 }
 
-function getRating(score: number): string {
+export function getRating(score: number): string {
     if (score >= 90) return '5th-6th grade level - Very easy to read.';
     if (score >= 80) return '7th grade level - Fairly easy to read.';
     if (score >= 70) return '8th & 9th grade - Plain English.';
@@ -115,7 +115,7 @@ function getRating(score: number): string {
     return 'Professional - Extremely difficult to read.';
 }
 
-function stripExistingHeader(content: string, format: FileFormat): string {
+export function stripExistingHeader(content: string, format: FileFormat): string {
     const startPattern = format === 'markdown'
         ? /<!--\s*readability-score:start\s*-->/
         : /\/\/\s*readability-score:start/;
@@ -131,7 +131,7 @@ function stripExistingHeader(content: string, format: FileFormat): string {
     return (content.slice(0, startMatch.index) + content.slice(cutEnd)).replace(/^\n+/, '');
 }
 
-function stripLegacyHeader(content: string): string {
+export function stripLegacyHeader(content: string): string {
     if (!/^\/\/ Readability score: \d/.test(content)) return content;
     const lines = content.split('\n');
     let i = 0;
@@ -140,7 +140,7 @@ function stripLegacyHeader(content: string): string {
     return lines.slice(i).join('\n');
 }
 
-function stripMarkdown(content: string): { cleaned: string; hasCodeBlock: boolean } {
+export function stripMarkdown(content: string): { cleaned: string; hasCodeBlock: boolean } {
     let text = content;
     let hasCodeBlock = false;
 
@@ -168,7 +168,7 @@ function stripMarkdown(content: string): { cleaned: string; hasCodeBlock: boolea
     return { cleaned: text.trim(), hasCodeBlock };
 }
 
-function stripAsciidoc(content: string): { cleaned: string; hasCodeBlock: boolean } {
+export function stripAsciidoc(content: string): { cleaned: string; hasCodeBlock: boolean } {
     let text = content;
     let hasCodeBlock = false;
 
@@ -194,12 +194,12 @@ function clean(content: string, format: FileFormat): { cleaned: string; hasCodeB
     return format === 'markdown' ? stripMarkdown(content) : stripAsciidoc(content);
 }
 
-function countAcronyms(text: string): number {
+export function countAcronyms(text: string): number {
     const matches = text.match(/\b[A-Z]{2,}\b/g);
     return matches ? matches.length : 0;
 }
 
-function formatHeader(stats: FileStats, format: FileFormat): string {
+export function formatHeader(stats: FileStats, format: FileFormat): string {
     const lines = [
         HEADER_START,
         `Readability score: ${stats.score.toFixed(2)}`,
@@ -310,7 +310,7 @@ interface CliArgs {
     whatsNew: boolean;
 }
 
-function parseArgs(argv: string[]): CliArgs {
+export function parseArgs(argv: string[]): CliArgs {
     const args = argv.slice(2);
     const dryRun = args.includes('--dry-run') || args.includes('-n');
     const help = args.includes('--help') || args.includes('-h');
@@ -323,7 +323,7 @@ function parseArgs(argv: string[]): CliArgs {
     return { folderPath, dryRun, help, version, whatsNew };
 }
 
-function printHelp(): void {
+export function printHelp(): void {
     console.log(
         'Usage: readability-ts [path] [options]\n\n' +
         'Computes Flesch-Kincaid readability scores for AsciiDoc and Markdown files.\n\n' +
@@ -343,11 +343,11 @@ function printHelp(): void {
     );
 }
 
-function printVersion(): void {
+export function printVersion(): void {
     console.log(`readability-ts v${VERSION}`);
 }
 
-function printWhatsNew(): void {
+export function printWhatsNew(): void {
     console.log(RELEASE_NOTES);
 }
 
@@ -416,4 +416,6 @@ async function main(): Promise<void> {
     }
 }
 
-void main();
+if (require.main === module) {
+    void main();
+}

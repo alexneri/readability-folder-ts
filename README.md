@@ -97,12 +97,25 @@ For the full license text see: GNU GPL v3
 
 A donation is not required, but it is appreciated. If you find this program useful, please consider [sponsoring](https://github.com/sponsors/alexneri) me :) 
 
+## Development
+
+Run the test suite (Node 18+; no extra devDependencies required):
+
+```
+npm test
+```
+
+Tests live in `test/` and use Node's built-in `node:test` runner. They
+cover both the pure scoring/parsing functions and the CLI flags via
+child-process integration tests.
+
 ## Roadmap
 
 * ~~Make this installable on npm~~ **DONE**
 * ~~Add Markdown support with proper comment syntax~~ **DONE**
 * ~~Idempotent re-runs~~ **DONE**
 * ~~Skip vendored/build directories by default~~ **DONE**
+* ~~Add a basic test suite~~ **DONE**
 * Add more tests
 * Add more documentation
 * Add more supported file formats

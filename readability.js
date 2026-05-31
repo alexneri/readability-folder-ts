@@ -34,14 +34,30 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.RELEASE_NOTES = exports.HOMEPAGE = exports.VERSION = void 0;
+exports.detectFormat = detectFormat;
+exports.countSyllables = countSyllables;
+exports.tokenize = tokenize;
+exports.fleschKincaid = fleschKincaid;
+exports.getRating = getRating;
+exports.stripExistingHeader = stripExistingHeader;
+exports.stripLegacyHeader = stripLegacyHeader;
+exports.stripMarkdown = stripMarkdown;
+exports.stripAsciidoc = stripAsciidoc;
+exports.countAcronyms = countAcronyms;
+exports.formatHeader = formatHeader;
+exports.parseArgs = parseArgs;
+exports.printHelp = printHelp;
+exports.printVersion = printVersion;
+exports.printWhatsNew = printWhatsNew;
 const fs = __importStar(require("fs/promises"));
 const path = __importStar(require("path"));
 const perf_hooks_1 = require("perf_hooks");
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const pkg = require('./package.json');
-const VERSION = pkg.version;
-const HOMEPAGE = pkg.homepage;
-const RELEASE_NOTES = `What's new in readability-ts v${VERSION}
+exports.VERSION = pkg.version;
+exports.HOMEPAGE = pkg.homepage;
+exports.RELEASE_NOTES = `What's new in readability-ts v${exports.VERSION}
 
 * Idempotent re-runs: existing readability headers are detected via
   readability-score:start / readability-score:end sentinels and replaced
@@ -57,7 +73,7 @@ const RELEASE_NOTES = `What's new in readability-ts v${VERSION}
 
 For the full changelog see:
 https://github.com/alexneri/readability-folder-ts/commits/main
-${HOMEPAGE ? `\nFind out more: ${HOMEPAGE}\n` : ''}`;
+${exports.HOMEPAGE ? `\nFind out more: ${exports.HOMEPAGE}\n` : ''}`;
 const SUPPORTED_EXTENSIONS = new Map([
     ['.adoc', 'asciidoc'],
     ['.asciidoc', 'asciidoc'],
@@ -332,10 +348,10 @@ function printHelp() {
         '  readability-ts ./docs -n      Preview scores without writing anything');
 }
 function printVersion() {
-    console.log(`readability-ts v${VERSION}`);
+    console.log(`readability-ts v${exports.VERSION}`);
 }
 function printWhatsNew() {
-    console.log(RELEASE_NOTES);
+    console.log(exports.RELEASE_NOTES);
 }
 async function main() {
     const start = perf_hooks_1.performance.now();
@@ -388,4 +404,6 @@ async function main() {
         process.exit(1);
     }
 }
-void main();
+if (require.main === module) {
+    void main();
+}
